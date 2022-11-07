@@ -1,0 +1,30 @@
+.main-container {
+  layout: horizontal;
+  max-width: 100%;
+}
+
+.main-container .data-table {
+  dock: left;
+  width: 50%;
+}
+
+.main-container .atm-screen {
+  dock: right;
+  width: 50%;
+  background: $boost;
+}
+
+#customer-name-row {
+  layout: horizontal;
+  background: $primary;
+  height: 1;
+}
+
+#transactions-title {
+  height: 1;
+  background: $primary-darken-3;
+}
+
+#customer-name-row * {
+  width: 1fr;
+}
