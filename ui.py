@@ -1,95 +1,60 @@
-from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Static, DataTable, TextLog
-from textual.widget import Widget
-from textual.containers import Container
-from textual.reactive import reactive
-from customer_generator import generate_customer
-from atm import Customer, ATM
+import wx
+from event import EventEmitter, EVENT_UPDATE_LIST
 
-class CustomerName(Widget):
+class ATMPanel(wx.Panel):
+    def __init__(self, parent):
+        super().__init__(parent)
 
-    name = reactive("")
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-    def render(self):
-        return self.name
-
-class CustomerTransactions(Widget):
-
-    transactions_number = reactive(0)
-
-    def render(self):
-        return f"Transactions: {self.transactions_number}"
-
-class ATMScreen(Widget):
-
-    customer_id = reactive("")
-    customer_transactions = reactive(0)
-    
-
-
-    def compose(self) -> ComposeResult:
-        yield Container(
-            Static("Current customer"),
-            CustomerName(),
-            id="customer-name-row"
+        self.list_ctrl = wx.ListCtrl(
+            self, 
+            size=(-1, 100),
+            style=wx.LC_REPORT | wx.BORDER_SUNKEN
         )
 
-        yield Container(CustomerTransactions(), id="transactions-title")
+        self.list_ctrl.InsertColumn(0, "Customer turn", width=140)
+        self.list_ctrl.InsertColumn(1, "Num transactions", width=140)
 
-        yield Container(
-            *[TextLog("transaction 1") for i in range(0, self.customer_transactions)]
-        )
-
-    def update(self):
-        self.query_one(CustomerName).name = self.customer_id
-        self.query_one(CustomerTransactions).transactions_number = self.customer_transactions
-
-class ATMUi(App):
-
-    BINDINGS = [("c", "generate_customer", "Generate new customer")]
-
-    CSS_PATH = "main.css"
-
-    atm = None
-
-    current_customer = None
-
-    def on_mount(self) -> None:
-        table = self.query_one(DataTable)
-        table.add_columns("Id num", "Transactions num")
-
-        self.atm = ATM()
-
-    def compose(self) -> ComposeResult:
-        yield Header()
-        yield Footer()
-
-        yield Container(
-            DataTable(classes="data-table"),
-            ATMScreen(classes="atm-screen"),
-            classes="main-container"
-        )
-
-
-    def action_generate_customer(self):
-        # self.add_new_customer(generate_customer(), "new")
-        customer = generate_customer()
-        self.add_new_customer(customer)
-        self.atm.put_customer_inline(customer)
-
-        if self.current_customer is None:
-            atm_screen = self.query_one(ATMScreen)
-
-            atm_screen.customer_id = customer.id_number
-            atm_screen.customer_transactions = customer.num_transac
-
-            atm_screen.update()
-
-            # self.query_one(ATMScreen).update()
-
-
-
-    def add_new_customer(self, customer: Customer):
+        main_sizer.Add(self.list_ctrl, 0, wx.ALL | wx.EXPAND, 5)
         
-        print("new customer added to ui")
-        self.query_one(DataTable).add_row(customer.id_number, str(customer.num_transac))
+        close_button = wx.Button(self, label="Close")
+        close_button.Bind(wx.EVT_BUTTON, self.close)
+
+        main_sizer.Add(close_button, 0, wx.ALL | wx.CENTER, 5)
+
+        self.SetSizer(main_sizer)
+
+    
+    def close(self, event):
+        quit()
+
+    def update_customer_list(self, customers):
+        self.list_ctrl.DeleteAllItems()
+        for index, customer in enumerate(customers):
+            self.list_ctrl.InsertItem(index, customer.id_number)
+            self.list_ctrl.SetItem(index, 1, str(customer.num_transac))
+
+
+class ATMFrame(wx.Frame):
+    def __init__(self, *args, **kw):
+        super().__init__(parent=None, title="ATM")
+
+        self.panel = ATMPanel(self)
+        self.Show()
+
+
+class ATMUI():
+    
+    def start(self):
+        app = wx.App()
+
+        self.frame = ATMFrame()
+
+        EventEmitter.subscribe(EVENT_UPDATE_LIST, self.update_customer_list)
+
+        app.MainLoop()
+
+    def update_customer_list(self, customers):
+        self.frame.panel.update_customer_list(customers)
+
